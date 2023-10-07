@@ -1,0 +1,48 @@
+# 丰富一下配置
+
+genesis.json
+
+```json
+{
+  "config": {
+    "chainId": 10,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0
+  },
+  "alloc": {
+    "0x1fa0bb39d82a760ff8a53d1abbc544041bb8b546": {
+      "balance": 1000000000,
+      "storage": {
+        "0x000000001": "0x000000002"
+      }
+    },
+    "0xcad234afd3b0a96c8f25cb5de9da3e243d063429": {
+      "balance": 1000000000,
+      "storage": {
+        "0x000000003": "0x000000004"
+      }
+    }
+  },
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "difficulty": "0x0200000",
+  "extraData": "",
+  "gasLimit": "0x2fefd8",
+  "nonce": "0x0000000000000042",
+  "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "timestamp": "0x00"
+}
+```
+
+<br />
+
+#  g.Alloc.deriveHash()
+
+生成一个内存db，不会persist，用来算出statedb.trie 的root hash
+
+![genesis_04](img/genesis_04.svg)
+
+<br />
+
