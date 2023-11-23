@@ -105,7 +105,7 @@ func (h *httpServer) setListenAddr(host string, port int) error {
 	}
 
 	h.host, h.port = host, port
-	h.endpoint = fmt.Sprintf("%s:%d", host, port)
+	h.endpoint = fmt.Sprintf("%s:%d", host, port) // "localhost:8551"
 	return nil
 }
 
@@ -140,7 +140,7 @@ func (h *httpServer) start() error {
 	}
 
 	// Start the server.
-	listener, err := net.Listen("tcp", h.endpoint)
+	listener, err := net.Listen("tcp", h.endpoint) // "localhost:8551"
 	if err != nil {
 		// If the server fails to start, we need to clear out the RPC and WS
 		// configuration so they can be configured another time.
@@ -151,8 +151,8 @@ func (h *httpServer) start() error {
 	h.listener = listener
 	go h.server.Serve(listener)
 
-	if h.wsAllowed() {
-		url := fmt.Sprintf("ws://%v", listener.Addr())
+	if h.wsAllowed() { // true
+		url := fmt.Sprintf("ws://%v", listener.Addr()) // "ws://127.0.0.1:8551"
 		if h.wsConfig.prefix != "" {
 			url += h.wsConfig.prefix
 		}
