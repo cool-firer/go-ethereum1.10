@@ -86,11 +86,16 @@ func (ga *GenesisAlloc) UnmarshalJSON(data []byte) error {
 func (ga *GenesisAlloc) deriveHash() (common.Hash, error) {
 	// Create an ephemeral in-memory database for computing hash,
 	// all the derived states will be discarded to not pollute disk.
+
+	// https://github.com/cool-firer/go-ethereum1.10/blob/main/X_11_genesis%E9%87%8D%E7%9C%8B_%E5%A2%9E%E5%8A%A0%E9%85%8D%E7%BD%AE.md
 	db := state.NewDatabase(rawdb.NewMemoryDatabase())
+
+	// root: Hash{}
 	statedb, err := state.New(common.Hash{}, db, nil)
 	if err != nil {
 		return common.Hash{}, err
 	}
+
 	for addr, account := range *ga {
 		statedb.AddBalance(addr, account.Balance)
 		statedb.SetCode(addr, account.Code)
@@ -288,7 +293,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	// Just commit the new block if there is no stored genesis block.
 	// 读取 h0n 区块, 是创世区块
 	// h0n ----> blockhash
-	stored := rawdb.ReadCanonicalHash(db, 0)
+	stored := rawdb.ReadCanonicalHash(db, 0) // [62,106,111,118,135,6,228,5,75,122,247,87,165,98,215,73,254,33,157,25,190,39,3,161,50,81,252,214,220,199,101,75]
 	if (stored == common.Hash{}) { // 一开始 true 写入genesis后, root不是空trie
 		if genesis == nil {
 			log.Info("Writing default main-net genesis block")
@@ -337,11 +342,38 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	}
 	
 	// Get the existing chain configuration.
-	newcfg := genesis.configOrDefault(stored) // stored是 主网配置hash?
+	newcfg := genesis.configOrDefault(stored) // newcfg: params.AllEthashProtocolChanges
 	applyOverrides(newcfg)
 	if err := newcfg.CheckConfigForkOrder(); err != nil {
 		return newcfg, common.Hash{}, err
 	}
+
+/** storedcfg
+params.ChainConfig {
+ChainID: *math/big.Int {neg: false, abs: math/big.nat len: 1, cap: 1, [10]}, 
+HomesteadBlock: *math/big.Int {neg: false, abs: math/big.nat len: 0, cap: 0, nil}, DAOForkBlock: *math/big.Int nil, 
+DAOForkSupport: false, 
+EIP150Block: *math/big.Int {neg: false, abs: math/big.nat len: 0, cap: 0, nil}, 
+EIP150Hash: github.com/ethereum/go-ethereum/common.Hash [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
+EIP155Block: *math/big.Int {neg: false, abs: math/big.nat len: 0, cap: 0, nil}, 
+EIP158Block: *math/big.Int {neg: false, abs: math/big.nat len: 0, cap: 0, nil}, ByzantiumBlock: *math/big.Int nil, 
+ConstantinopleBlock: *math/big.Int nil, 
+PetersburgBlock: *math/big.Int nil, 
+IstanbulBlock: *math/big.Int nil, 
+MuirGlacierBlock: *math/big.Int nil, 
+BerlinBlock: *math/big.Int nil, 
+LondonBlock: *math/big.Int nil, 
+ArrowGlacierBlock: *math/big.Int nil, 
+GrayGlacierBlock: *math/big.Int nil, 
+MergeNetsplitBlock: *math/big.Int nil, 
+ShanghaiBlock: *math/big.Int nil, 
+CancunBlock: *math/big.Int nil, 
+TerminalTotalDifficulty: *math/big.Int nil, 
+TerminalTotalDifficultyPassed: false, 
+Ethash: *github.com/ethereum/go-ethereum/params.EthashConfig nil, 
+Clique: *github.com/ethereum/go-ethereum/params.CliqueConfig nil
+}
+*/
 	storedcfg := rawdb.ReadChainConfig(db, stored) // ethereum-config- + blockHash
 	if storedcfg == nil {
 		log.Warn("Found genesis block without chain config")
@@ -353,7 +385,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	// chain config as that would be AllProtocolChanges (applying any new fork
 	// on top of an existing private network genesis block). In that case, only
 	// apply the overrides.
-	if genesis == nil && stored != params.MainnetGenesisHash {
+	if genesis == nil && stored != params.MainnetGenesisHash { // true
 		newcfg = storedcfg
 		applyOverrides(newcfg)
 	}

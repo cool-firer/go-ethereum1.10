@@ -295,6 +295,8 @@ func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMess
 		h.handleCall(ctx, msg)
 		h.log.Debug("Served "+msg.Method, "duration", time.Since(start))
 		return nil
+
+	// c.client.SupportedModules()
 	case msg.isCall():
 		resp := h.handleCall(ctx, msg)
 		var ctx []interface{}

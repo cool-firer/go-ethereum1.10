@@ -615,7 +615,7 @@ func (t *Trie) Hash() common.Hash {
 // 收集脏节点, 替换成相应的hash. 所有收集的脏节点会被封装成一个set, 作为返回值。
 // 一旦commit, trie树将不再可用。
 func (t *Trie) Commit(collectLeaf bool) (common.Hash, *NodeSet, error) {
-	// collectLeaf: false
+	// deriveHash: collectLeaf: false
 
 	// stateDB来的: coolectLeaft: true
 	defer t.tracer.reset()

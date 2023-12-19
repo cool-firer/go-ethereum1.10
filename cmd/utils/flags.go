@@ -1005,7 +1005,7 @@ var (
 // if none (or the empty string) is specified. If the node is starting a testnet,
 // then a subdirectory of the specified datadir will be used.
 func MakeDataDir(ctx *cli.Context) string {
-	if path := ctx.String(DataDirFlag.Name); path != "" {
+	if path := ctx.String(DataDirFlag.Name); path != "" { // path: "chain_data"
 		if ctx.Bool(RopstenFlag.Name) {
 			// Maintain compatibility with older Geth configurations storing the
 			// Ropsten database in `testnet` instead of `ropsten`.

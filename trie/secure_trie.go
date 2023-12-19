@@ -223,6 +223,8 @@ func (t *StateTrie) GetKey(shaKey []byte) []byte {
 
 // 收集脏结点, 替换成node hash, 返回脏结点集.
 // 一旦commit, trie树将不再可用.
+// deriveHash时, StateObject: s.trie.Commit(false)
+// deriveHash时, account trie: Commit(true)
 func (t *StateTrie) Commit(collectLeaf bool) (common.Hash, *NodeSet, error) {
 	
 	// stateDB.trie: collectLeaf: true

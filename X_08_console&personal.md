@@ -44,39 +44,79 @@ op := &requestOp{
 
 <br />
 
-c.send(ctx, op, msg)：op放reqInit
+写入p2:
 
-​	c.reqInit <- op                                       ---------------->   op := <-reqInitLock 收到op:
-
-​     																							conn{
-
-​																										handler: {
-
-​																												respWait[id] = op
-
-​																										}
-
-​																								}
+```php
+c.send(ctx, op, msg): op放reqInit
+c.reqInit <- op       ---------------->   op := <-reqInitLock 收到op:
+																							conn{
+                                                handler: {
+                                                  respWait[id] = op
+                                                }
+                                              }
 
 接收返回, c.write(ctx, msg, false):
-
-​	往p2写入msg (此时p1端应该可以读了)
-
-
-
-c.reqSent <- err									----------------->   err := <-c.reqSent 收到, 重置reqInitLock
-
+往p2写入msg (此时p1端应该可以读了)
+c.reqSent <- err       ----------------->   err := <-c.reqSent 收到, 重置reqInitLock
 接收返回;
 
-
-
-
-
 op.wait(ctx, c):
-
-​	resp := <-op.resp: 阻塞等待
+resp := <-op.resp: 阻塞等待
+```
 
 <br />
+
+从p1读取:
+
+```go
+func (c *Client) read(codec ServerCodec) {
+	for {
+    // 统一解码成[]*jsonrpcMessage
+		msgs, batch, err := codec.readBatch()
+		if _, ok := err.(*json.SyntaxError); ok {
+			codec.writeJSON(context.Background(), errorMessage(&parseError{err.Error()}))
+		}
+		if err != nil {
+			c.readErr <- err
+			return
+		}
+    
+    // 放入
+		c.readOp <- readOp{msgs, batch}
+	}
+}
+```
+
+接收c.readOp:
+
+```go
+case op := <-c.readOp:
+	if op.batch {
+    conn.handler.handleBatch(op.msgs)
+  } else {
+    conn.handler.handleMsg(op.msgs[0])
+  }
+```
+
+<br />
+
+得到返回值：
+
+```go
+map[string]string [
+  "engine": "1.0", 
+  "eth": "1.0", 
+  "net": "1.0", 
+  "personal": "1.0", 
+  "txpool": "1.0", 
+  "admin": "1.0", 
+  "debug": "1.0", 
+  "ethash": "1.0", 
+  "miner": "1.0", 
+  "rpc": "1.0", 
+  "web3": "1.0", 
+]
+```
 
 
 
@@ -111,22 +151,25 @@ console是个js解释运行时，通过rpc附会在以太坊节点上，完全�
 
 ```go
 console := &Console{
-		// rpc client, 用来中执行ethereum请求
-		client:             config.Client,
-
-		// 封装了goja解释器的 js运行时
-		jsre:               jsre.New(config.DocRoot, config.Printer),
-		prompt:             ">",
-		prompter:           prompt.Stdin,
-    
-    // 第三方库
-		printer:            colorable.NewColorableStdout(),
-		histPath:           filepath.Join(config.DataDir, HistoryFile),
-		interactiveStopped: make(chan struct{}),
-		stopInteractiveCh:  make(chan struct{}),
-		signalReceived:     make(chan struct{}, 1),
-		stopped:            make(chan struct{}),
-	}
+	// rpc client, 用来中执行ethereum请求
+	client:	config.Client,
+  
+  // 封装了goja解释器的 js运行时
+  // DocRoot: "."
+  jsre:               jsre.New(config.DocRoot, config.Printer),
+  prompt:             ">",
+  prompter:           prompt.Stdin,
+  
+  // 第三方库
+  printer:            colorable.NewColorableStdout(),
+  
+  // DataDir: "chain_data"
+  histPath:           filepath.Join(config.DataDir, HistoryFile),
+  interactiveStopped: make(chan struct{}),
+  stopInteractiveCh:  make(chan struct{}),
+  signalReceived:     make(chan struct{}, 1),
+  stopped:            make(chan struct{}),
+}
 
 console.init()
 ```
@@ -174,22 +217,21 @@ web3.js personal部分类图示：
 
 大概过程是这样：
 
-```javascript
+```java
 【goroA】
-console等待输入:															
-输入personal.newAccount("123456");				【goroB】
-调用goja执行语句;					---------->		goja执行javascript语句:
-																			组装请求, jsonrpc;
-																			走到go的bridge;
-																			用bridge请求;
-																			bridge再用client写入p2管道;	---->	【goroC】
-																																			监听到p2管道;
-																																			读取p2内容;
-																																			调用相应函数;
-																																			返回值写入p1管道;
-拿到返回值, 再打印出来		<----------		监听到p2管道可读, 取到返回值  <-----
-
-
+console等待输入:
+输入personal.newAccount("123456");  【goroB】
+调用goja执行语句;       ---------->   goja执行javascript语句:
+                                    组装请求, jsonrpc;
+                                    走到go的bridge;
+                                    用bridge请求;
+                                    bridge再用client写入p2管道; ----> 【goroC】
+                                                                     监听到p2管道;
+                                                                     读取p2内容;
+                                                                     调用相应函数;
+                                                                     返回值写入p1管道;
+拿到返回值, 再打印出来  <----------  监听到p2管道可读, 取到返回值  <-----
+  
 ```
 
 <br />
@@ -213,11 +255,11 @@ backend就是keystore，存一个updates的发送端；
 **func (s *PersonalAccountAPI) NewAccount(password string)**：
 
 ```go
-产生一个私钥对象；
+产生一个私钥对象;
 调用ks.updateFeed.Send(event)
-向updates发送event 					--------->		【Goro】
-																					收到, 刷新钱包;
-																					再通知am.feed.Send(event)
+向updates发送event       --------->   【Goro】
+                                      收到, 刷新钱包;
+                                      再通知am.feed.Send(event)
 ```
 
 <br />

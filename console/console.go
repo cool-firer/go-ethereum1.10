@@ -219,6 +219,21 @@ func (c *Console) initExtensions() error {
 
 	// 要发rpc请求
 	// 拿到注册的namespace
+	/** apis: 
+	map[string]string [
+  	"engine": "1.0", 
+  	"eth": "1.0", 
+  	"net": "1.0", 
+  	"personal": "1.0", 
+  	"txpool": "1.0", 
+  	"admin": "1.0", 
+  	"debug": "1.0", 
+  	"ethash": "1.0", 
+  	"miner": "1.0", 
+  	"rpc": "1.0", 
+  	"web3": "1.0", 
+	]
+	*/
 	apis, err := c.client.SupportedModules()
 	if err != nil {
 		return fmt.Errorf("api modules: %v", err)

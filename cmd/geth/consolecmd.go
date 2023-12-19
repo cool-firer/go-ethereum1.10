@@ -86,10 +86,10 @@ func localConsole(ctx *cli.Context) error {
 		return fmt.Errorf("Failed to attach to the inproc geth: %v", err)
 	}
 	config := console.Config{
-		DataDir: utils.MakeDataDir(ctx),
-		DocRoot: ctx.String(utils.JSpathFlag.Name),
+		DataDir: utils.MakeDataDir(ctx), // "chain_data"
+		DocRoot: ctx.String(utils.JSpathFlag.Name), // "."
 		Client:  client,
-		Preload: utils.MakeConsolePreloads(ctx),
+		Preload: utils.MakeConsolePreloads(ctx), // []
 	}
 	console, err := console.New(config)
 	if err != nil {

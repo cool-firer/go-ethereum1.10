@@ -161,7 +161,8 @@ func (s *stateObject) getTrie(db Database) Trie {
 		}
 		if s.trie == nil {
 			var err error
-			// 
+			// owner: s.addrHash, root: emptyRoot
+			// 所有这里是打开一棵空的树而已
 			s.trie, err = db.OpenStorageTrie(s.addrHash, s.data.Root)
 			if err != nil {
 				s.trie, _ = db.OpenStorageTrie(s.addrHash, common.Hash{})
@@ -328,6 +329,7 @@ func (s *stateObject) updateTrie(db Database) Trie {
 	// Insert all the pending updates into the trie
 
 	// db: statedb.db: cachingDB
+	// 打开一棵新的trie
 	tr := s.getTrie(db)
 	hasher := s.db.hasher
 
@@ -379,7 +381,7 @@ func (s *stateObject) updateTrie(db Database) Trie {
 func (s *stateObject) updateRoot(db Database) {
 	// If nothing changed, don't bother with hashing anything
 	
-	// pending写入trie
+	// pending入trie: key1 -> value1 入trie树
 	// 重置pending
 	if s.updateTrie(db) == nil {
 		return

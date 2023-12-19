@@ -865,6 +865,7 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) { // deleteEmptyObjects: tru
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	// Finalise all the dirty storage states and write them into the tries
 
+	// 调deriveHash时: deleteEmptyObjects: false
 	// flush: false
 	s.Finalise(deleteEmptyObjects) // true
 
@@ -889,7 +890,7 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	// to pull useful data from disk.
 	for addr := range s.stateObjectsPending {
 		if obj := s.stateObjects[addr]; !obj.deleted {
-			// pending入trie
+			// pending入trie: key1 -> value1 入trie树
 			// trie算hash
 			// 放在StateAccount.Root
 			obj.updateRoot(s.db)
@@ -951,7 +952,8 @@ func (s *StateDB) clearJournalAndRefund() {
 
 // Commit writes the state to the underlying in-memory trie database.
 func (s *StateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
-	// deleteEmptyObjects: false
+	// 调deriveHash时: deleteEmptyObjects: false
+	// flush时，也是false
 	if s.dbErr != nil {
 		return common.Hash{}, fmt.Errorf("commit aborted due to earlier error: %v", s.dbErr)
 	}
@@ -1020,6 +1022,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
 	}
 
 	// 轮到account trie了
+
 	root, set, err := s.trie.Commit(true)
 	if err != nil {
 		return common.Hash{}, err
