@@ -12,12 +12,12 @@
 
 ```go
 type jsonrpcMessage struct {
-	Version string          `json:"jsonrpc,omitempty"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Error   *jsonError      `json:"error,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
+  Version string          `json:"jsonrpc,omitempty"`
+  ID      json.RawMessage `json:"id,omitempty"`
+  Method  string          `json:"method,omitempty"`
+  Params  json.RawMessage `json:"params,omitempty"`
+  Error   *jsonError      `json:"error,omitempty"`
+  Result  json.RawMessage `json:"result,omitempty"`
 }
 ```
 
@@ -70,20 +70,19 @@ resp := <-op.resp: 阻塞等待
 
 ```go
 func (c *Client) read(codec ServerCodec) {
-	for {
+  for {
     // 统一解码成[]*jsonrpcMessage
-		msgs, batch, err := codec.readBatch()
-		if _, ok := err.(*json.SyntaxError); ok {
-			codec.writeJSON(context.Background(), errorMessage(&parseError{err.Error()}))
-		}
-		if err != nil {
-			c.readErr <- err
-			return
-		}
-    
+    msgs, batch, err := codec.readBatch()
+    if _, ok := err.(*json.SyntaxError); ok {
+      codec.writeJSON(context.Background(), errorMessage(&parseError{err.Error()}))
+    }
+    if err != nil {
+      c.readErr <- err
+      return
+    } 
     // 放入
-		c.readOp <- readOp{msgs, batch}
-	}
+    c.readOp <- readOp{msgs, batch}
+  }
 }
 ```
 
@@ -91,7 +90,7 @@ func (c *Client) read(codec ServerCodec) {
 
 ```go
 case op := <-c.readOp:
-	if op.batch {
+  if op.batch {
     conn.handler.handleBatch(op.msgs)
   } else {
     conn.handler.handleMsg(op.msgs[0])
@@ -151,8 +150,8 @@ console是个js解释运行时，通过rpc附会在以太坊节点上，完全�
 
 ```go
 console := &Console{
-	// rpc client, 用来中执行ethereum请求
-	client:	config.Client,
+  // rpc client, 用来中执行ethereum请求
+  client:	config.Client,
   
   // 封装了goja解释器的 js运行时
   // DocRoot: "."
