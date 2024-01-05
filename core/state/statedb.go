@@ -262,7 +262,7 @@ func (s *StateDB) Empty(addr common.Address) bool {
 
 // GetBalance retrieves the balance from the given address or 0 if object not found
 func (s *StateDB) GetBalance(addr common.Address) *big.Int {
-	stateObject := s.getStateObject(addr)
+	stateObject := s.getStateObject(addr) // 对于全0的addr, 返回nil stateObject
 	if stateObject != nil {
 		return stateObject.Balance()
 	}
@@ -301,7 +301,7 @@ func (s *StateDB) GetCodeSize(addr common.Address) int {
 
 func (s *StateDB) GetCodeHash(addr common.Address) common.Hash {
 	stateObject := s.getStateObject(addr)
-	if stateObject == nil {
+	if stateObject == nil { // 全0值的addr, 是nil
 		return common.Hash{}
 	}
 	return common.BytesToHash(stateObject.CodeHash())

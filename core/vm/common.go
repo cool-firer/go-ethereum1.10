@@ -34,13 +34,13 @@ func calcMemSize64(off, l *uint256.Int) (uint64, bool) {
 // calcMemSize64WithUint calculates the required memory size, and returns
 // the size and whether the result overflowed uint64
 // Identical to calcMemSize64, but length is a uint64
-func calcMemSize64WithUint(off *uint256.Int, length64 uint64) (uint64, bool) {
+func calcMemSize64WithUint(off *uint256.Int, length64 uint64) (uint64, bool) { // 摸一下 stack[off]数据, 转成uint64
 	// if length is zero, memsize is always zero, regardless of offset
 	if length64 == 0 {
 		return 0, false
 	}
 	// Check that offset doesn't overflow
-	offset64, overflow := off.Uint64WithOverflow()
+	offset64, overflow := off.Uint64WithOverflow() // uint256 转 uint64 看有没有溢出
 	if overflow {
 		return 0, true
 	}

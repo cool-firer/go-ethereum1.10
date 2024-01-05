@@ -194,8 +194,8 @@ func newByzantiumInstructionSet() JumpTable {
 }
 
 // EIP 158 a.k.a Spurious Dragon
-func newSpuriousDragonInstructionSet() JumpTable {
-	instructionSet := newTangerineWhistleInstructionSet()
+func newSpuriousDragonInstructionSet() JumpTable { // 虚假的[ˈspjʊriəs]
+	instructionSet := newTangerineWhistleInstructionSet() // 柑橘
 	instructionSet[EXP].dynamicGas = gasExpEIP158
 	return validate(instructionSet)
 }
@@ -240,7 +240,7 @@ func newFrontierInstructionSet() JumpTable {
 		},
 		ADD: {
 			execute:     opAdd,
-			constantGas: GasFastestStep,
+			constantGas: GasFastestStep, // 3
 			minStack:    minStack(2, 1),
 			maxStack:    maxStack(2, 1),
 		},

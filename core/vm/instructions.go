@@ -364,7 +364,7 @@ func opCodeCopy(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 	if overflow {
 		uint64CodeOffset = 0xffffffffffffffff
 	}
-	codeCopy := getData(scope.Contract.Code, uint64CodeOffset, length.Uint64())
+	codeCopy := getData(scope.Contract.Code, uint64CodeOffset, length.Uint64()) // offSet:32, length: 336
 	scope.Memory.Set(memOffset.Uint64(), length.Uint64(), codeCopy)
 
 	return nil, nil
@@ -502,7 +502,7 @@ func opMload(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]by
 
 func opMstore(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	// pop value of the stack
-	mStart, val := scope.Stack.pop(), scope.Stack.pop()
+	mStart, val := scope.Stack.pop(), scope.Stack.pop() // mStart先运行:0x40
 	scope.Memory.Set32(mStart.Uint64(), &val)
 	return nil, nil
 }

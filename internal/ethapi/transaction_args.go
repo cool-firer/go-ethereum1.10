@@ -208,12 +208,12 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 	addr := args.from()
 
 	// Set default gas & gas price if none were set
-	gas := globalGasCap
+	gas := globalGasCap // 50000000 = 0x2faf080
 	if gas == 0 {
 		gas = uint64(math.MaxUint64 / 2)
 	}
 	if args.Gas != nil {
-		gas = uint64(*args.Gas)
+		gas = uint64(*args.Gas) // 1582828 = 0x1826ec
 	}
 	if globalGasCap != 0 && globalGasCap < gas {
 		log.Warn("Caller gas above allowance, capping", "requested", gas, "cap", globalGasCap)

@@ -134,7 +134,7 @@ func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*typ
 }
 
 func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) {
-	if blockNr, ok := blockNrOrHash.Number(); ok {
+	if blockNr, ok := blockNrOrHash.Number(); ok { // blockNr: PendingBlockNumber (-2)
 		return b.BlockByNumber(ctx, blockNr)
 	}
 	if hash, ok := blockNrOrHash.Hash(); ok {

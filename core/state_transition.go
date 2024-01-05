@@ -118,8 +118,8 @@ func (result *ExecutionResult) Revert() []byte {
 func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool, isHomestead, isEIP2028 bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
-	if isContractCreation && isHomestead {
-		gas = params.TxGasContractCreation
+	if isContractCreation && isHomestead { // true
+		gas = params.TxGasContractCreation // 53000
 	} else {
 		gas = params.TxGas
 	}
@@ -129,24 +129,24 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 		var nz uint64
 		for _, byt := range data {
 			if byt != 0 {
-				nz++
+				nz++ // 最终值324
 			}
 		}
 		// Make sure we don't exceed uint64 for all data combinations
-		nonZeroGas := params.TxDataNonZeroGasFrontier
+		nonZeroGas := params.TxDataNonZeroGasFrontier // 68
 		if isEIP2028 {
 			nonZeroGas = params.TxDataNonZeroGasEIP2028
 		}
 		if (math.MaxUint64-gas)/nonZeroGas < nz {
 			return 0, ErrGasUintOverflow
 		}
-		gas += nz * nonZeroGas
+		gas += nz * nonZeroGas // 75032 = 0x12518
 
-		z := uint64(len(data)) - nz
+		z := uint64(len(data)) - nz // 全0值个数 z = 44
 		if (math.MaxUint64-gas)/params.TxDataZeroGas < z {
 			return 0, ErrGasUintOverflow
 		}
-		gas += z * params.TxDataZeroGas
+		gas += z * params.TxDataZeroGas // 75208 = 0x125c8
 	}
 	if accessList != nil {
 		gas += uint64(len(accessList)) * params.TxAccessListAddressGas
@@ -164,7 +164,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		gasPrice:  msg.GasPrice(),
 		gasFeeCap: msg.GasFeeCap(),
 		gasTipCap: msg.GasTipCap(),
-		value:     msg.Value(),
+		value:     msg.Value(), // 取自msg.amount nil
 		data:      msg.Data(),
 		state:     evm.StateDB,
 	}
@@ -191,12 +191,12 @@ func (st *StateTransition) to() common.Address {
 
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
-	mgval = mgval.Mul(mgval, st.gasPrice)
+	mgval = mgval.Mul(mgval, st.gasPrice) // st.gasPrice: 空值 最后mgval: 1582828 = 0x1826ec
 	balanceCheck := mgval
-	if st.gasFeeCap != nil {
+	if st.gasFeeCap != nil { // true gasFeeCap不是nil, 只是abs值是nil 可以理解为空盒子模型
 		balanceCheck = new(big.Int).SetUint64(st.msg.Gas())
 		balanceCheck = balanceCheck.Mul(balanceCheck, st.gasFeeCap)
-		balanceCheck.Add(balanceCheck, st.value)
+		balanceCheck.Add(balanceCheck, st.value) // value: 空盒子
 	}
 	if have, want := st.state.GetBalance(st.msg.From()), balanceCheck; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
@@ -204,7 +204,7 @@ func (st *StateTransition) buyGas() error {
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
 		return err
 	}
-	st.gas += st.msg.Gas()
+	st.gas += st.msg.Gas() // st.gas加后值: 1582828 = 0x1826ec
 
 	st.initialGas = st.msg.Gas()
 	st.state.SubBalance(st.msg.From(), mgval)
@@ -298,19 +298,19 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	var (
 		msg              = st.msg
 		sender           = vm.AccountRef(msg.From())
-		rules            = st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber, st.evm.Context.Random != nil)
-		contractCreation = msg.To() == nil
+		rules            = st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber, st.evm.Context.Random != nil) // 跟processon一样
+		contractCreation = msg.To() == nil // true
 	)
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
-	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation, rules.IsHomestead, rules.IsIstanbul)
+	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation, rules.IsHomestead, rules.IsIstanbul) // gas: 75208 = 0x125c8
 	if err != nil {
 		return nil, err
 	}
 	if st.gas < gas {
 		return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, st.gas, gas)
 	}
-	st.gas -= gas
+	st.gas -= gas // 减后值: 1507620 = 0x170124
 
 	// Check clause 6
 	if msg.Value().Sign() > 0 && !st.evm.Context.CanTransfer(st.state, msg.From(), msg.Value()) {
@@ -318,7 +318,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	}
 
 	// Set up the initial access list.
-	if rules.IsBerlin {
+	if rules.IsBerlin { // false
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
 	var (
@@ -333,9 +333,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
 	}
 
-	if !rules.IsLondon {
+	if !rules.IsLondon { // true
 		// Before EIP-3529: refunds were capped to gasUsed / 2
-		st.refundGas(params.RefundQuotient)
+		st.refundGas(params.RefundQuotient) // 2
 	} else {
 		// After EIP-3529: refunds are capped to gasUsed / 5
 		st.refundGas(params.RefundQuotientEIP3529)

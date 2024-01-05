@@ -69,19 +69,19 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	// If jump table was not initialised we set the default one.
 	if cfg.JumpTable == nil {
 		switch {
-		case evm.chainRules.IsMerge:
+		case evm.chainRules.IsMerge: // false
 			cfg.JumpTable = &mergeInstructionSet
-		case evm.chainRules.IsLondon:
+		case evm.chainRules.IsLondon: // false
 			cfg.JumpTable = &londonInstructionSet
-		case evm.chainRules.IsBerlin:
+		case evm.chainRules.IsBerlin: // false
 			cfg.JumpTable = &berlinInstructionSet
-		case evm.chainRules.IsIstanbul:
+		case evm.chainRules.IsIstanbul: // false
 			cfg.JumpTable = &istanbulInstructionSet
-		case evm.chainRules.IsConstantinople:
+		case evm.chainRules.IsConstantinople: // false
 			cfg.JumpTable = &constantinopleInstructionSet
-		case evm.chainRules.IsByzantium:
+		case evm.chainRules.IsByzantium:	// false
 			cfg.JumpTable = &byzantiumInstructionSet
-		case evm.chainRules.IsEIP158:
+		case evm.chainRules.IsEIP158: // true
 			cfg.JumpTable = &spuriousDragonInstructionSet
 		case evm.chainRules.IsEIP150:
 			cfg.JumpTable = &tangerineWhistleInstructionSet
@@ -113,7 +113,7 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 // It's important to note that any errors returned by the interpreter should be
 // considered a revert-and-consume-all-gas operation except for
 // ErrExecutionReverted which means revert-and-keep-gas-left.
-func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (ret []byte, err error) {
+func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (ret []byte, err error) { // input:nil, readOnly:false
 	// Increment the call depth which is restricted to 1024
 	in.evm.depth++
 	defer func() { in.evm.depth-- }()
@@ -193,7 +193,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		} else if sLen > operation.maxStack {
 			return nil, &ErrStackOverflow{stackLen: sLen, limit: operation.maxStack}
 		}
-		if !contract.UseGas(cost) {
+		if !contract.UseGas(cost) { //
 			return nil, ErrOutOfGas
 		}
 		if operation.dynamicGas != nil {
@@ -204,20 +204,20 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 			// Memory check needs to be done prior to evaluating the dynamic gas portion,
 			// to detect calculation overflows
 			if operation.memorySize != nil {
-				memSize, overflow := operation.memorySize(stack)
+				memSize, overflow := operation.memorySize(stack) // 96(0x60), false
 				if overflow {
 					return nil, ErrGasUintOverflow
 				}
 				// memory is expanded in words of 32 bytes. Gas
-				// is also calculated in words.
-				if memorySize, overflow = math.SafeMul(toWordSize(memSize), 32); overflow {
+				// is also calculated in words.  32 单位是bytes, 说明memSize单位也是bytes
+				if memorySize, overflow = math.SafeMul(toWordSize(memSize), 32); overflow { // memSize能被32划分成多个份, 再 * 32, 相当于还原回原来的数
 					return nil, ErrGasUintOverflow
 				}
 			}
 			// Consume the gas and return an error if not enough gas is available.
 			// cost is explicitly set so that the capture state defer method can get the proper cost
 			var dynamicCost uint64
-			dynamicCost, err = operation.dynamicGas(in.evm, contract, stack, mem, memorySize)
+			dynamicCost, err = operation.dynamicGas(in.evm, contract, stack, mem, memorySize) // dynamicCost: 9
 			cost += dynamicCost // for tracing
 			if err != nil || !contract.UseGas(dynamicCost) {
 				return nil, ErrOutOfGas
@@ -228,7 +228,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 				logged = true
 			}
 			if memorySize > 0 {
-				mem.Resize(memorySize)
+				mem.Resize(memorySize) // 扩展内存
 			}
 		} else if in.cfg.Debug {
 			in.cfg.Tracer.CaptureState(pc, op, gasCopy, cost, callContext, in.returnData, in.evm.depth, err)

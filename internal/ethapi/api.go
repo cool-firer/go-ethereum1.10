@@ -853,7 +853,7 @@ type StateOverride map[common.Address]OverrideAccount
 
 // Apply overrides the fields of specified accounts into the given state.
 func (diff *StateOverride) Apply(state *state.StateDB) error {
-	if diff == nil {
+	if diff == nil { // nil进入
 		return nil
 	}
 	for addr, account := range *diff {
@@ -964,7 +964,7 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 	}()
 
 	// Execute the message.
-	gp := new(core.GasPool).AddGas(math.MaxUint64)
+	gp := new(core.GasPool).AddGas(math.MaxUint64) // MaxUint64 = 1<<64 - 1
 	result, err := core.ApplyMessage(evm, msg, gp)
 	if err := vmError(); err != nil {
 		return nil, err
@@ -1028,10 +1028,10 @@ func (s *BlockChainAPI) Call(ctx context.Context, args TransactionArgs, blockNrO
 	return result.Return(), result.Err
 }
 
-func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap uint64) (hexutil.Uint64, error) {
+func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap uint64) (hexutil.Uint64, error) { // gasCap: 50000000 = 0x2faf080
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
-		lo  uint64 = params.TxGas - 1
+		lo  uint64 = params.TxGas - 1 // lo: 20999 = 0x5207
 		hi  uint64
 		cap uint64
 	)
@@ -1051,7 +1051,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 		if block == nil {
 			return 0, errors.New("block not found")
 		}
-		hi = block.GasLimit()
+		hi = block.GasLimit() // 3144658 = 0x2ffbd2
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
@@ -1064,7 +1064,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 	} else {
 		feeCap = common.Big0
 	}
-	// Recap the highest gas limit with account's available balance.
+	// Recap the highest gas limit with account's available balance. false
 	if feeCap.BitLen() != 0 {
 		state, _, err := b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 		if err != nil {
@@ -1102,7 +1102,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 	executable := func(gas uint64) (bool, *core.ExecutionResult, error) {
 		args.Gas = (*hexutil.Uint64)(&gas)
 
-		result, err := DoCall(ctx, b, args, blockNrOrHash, nil, 0, gasCap)
+		result, err := DoCall(ctx, b, args, blockNrOrHash, nil, 0, gasCap) // gasCap: 50000000 = 0x2faf080
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
@@ -1149,10 +1149,10 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 }
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the
-// given transaction against the current pending block.
+// given transaction against the current pending block.  blockNrOrHash: nil
 func (s *BlockChainAPI) EstimateGas(ctx context.Context, args TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
-	bNrOrHash := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
-	if blockNrOrHash != nil {
+	bNrOrHash := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber) // -2
+	if blockNrOrHash != nil { // nil
 		bNrOrHash = *blockNrOrHash
 	}
 	return DoEstimateGas(ctx, s.b, args, bNrOrHash, s.b.RPCGasCap())

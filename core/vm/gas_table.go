@@ -38,13 +38,13 @@ func memoryGasCost(mem *Memory, newMemSize uint64) (uint64, error) {
 	if newMemSize > 0x1FFFFFFFE0 {
 		return 0, ErrGasUintOverflow
 	}
-	newMemSizeWords := toWordSize(newMemSize)
+	newMemSizeWords := toWordSize(newMemSize) // 3
 	newMemSize = newMemSizeWords * 32
 
-	if newMemSize > uint64(mem.Len()) {
+	if newMemSize > uint64(mem.Len()) { // 需要扩展内存
 		square := newMemSizeWords * newMemSizeWords
 		linCoef := newMemSizeWords * params.MemoryGas
-		quadCoef := square / params.QuadCoeffDiv
+		quadCoef := square / params.QuadCoeffDiv // 512
 		newTotalFee := linCoef + quadCoef
 
 		fee := newTotalFee - mem.lastGasCost

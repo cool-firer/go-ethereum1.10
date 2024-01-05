@@ -35,7 +35,7 @@ func maxDupStack(n int) int {
 }
 
 func maxStack(pop, push int) int {
-	return int(params.StackLimit) + pop - push
+	return int(params.StackLimit) + pop - push // 1024
 }
 func minStack(pops, push int) int {
 	return pops

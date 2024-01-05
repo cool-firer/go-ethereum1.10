@@ -73,7 +73,7 @@ func New(ethone consensus.Engine) *Beacon {
 
 // Author implements consensus.Engine, returning the verified author of the block.
 func (beacon *Beacon) Author(header *types.Header) (common.Address, error) {
-	if !beacon.IsPoSHeader(header) {
+	if !beacon.IsPoSHeader(header) { // true
 		return beacon.ethone.Author(header)
 	}
 	return header.Coinbase, nil
