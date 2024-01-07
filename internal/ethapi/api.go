@@ -408,8 +408,8 @@ func (s *PersonalAccountAPI) UnlockAccount(ctx context.Context, addr common.Addr
 
 	const max = uint64(time.Duration(math.MaxInt64) / time.Second)
 	var d time.Duration
-	if duration == nil {
-		d = 300 * time.Second
+	if duration == nil { // true
+		d = 300 * time.Second // 5分钟
 	} else if *duration > max {
 		return false, errors.New("unlock duration too large")
 	} else {

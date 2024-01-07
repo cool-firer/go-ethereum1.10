@@ -61,7 +61,7 @@ ABI：
 
 # Console发布合约
 
-## 合约abi
+## 用abi创建合约
 
 ```javascript
 > abi = JSON.parse('[{"inputs":[],"name":"retrieve","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"num","type":"uint256"}],"name":"store","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
@@ -95,7 +95,7 @@ var ContractFactory = function (eth, abi) {
 
 <br />
 
-## 合约bytecode
+## 用bytecode estimateGas
 
 预估费用：
 
@@ -267,6 +267,97 @@ $$
 
 ![solidity_01_estimateGas](img/solidity_01_estimateGas.svg)
 
+## 查看所有账户
+
+```javascript
+> > web3.eth.accounts
+["0x1fa0bb39d82a760ff8a53d1abbc544041bb8b546", "0xcad234afd3b0a96c8f25cb5de9da3e243d063429"]
+```
+
+
+
+## unlock账户
+
+```javascript
+> personal.unlockAccount(eth.coinbase)
+```
+
+web3.js代码就不看，直接看Go代码，通过查找[inprocHandler](./X_06_inprocHandler.md)，unlockAccount在 `internal/ethapi/api.go#PersonalAccountAPI{}`，打上断点。
+
+```go
+func (s *PersonalAccountAPI) UnlockAccount(ctx context.Context, addr common.Address, password string, duration *uint64) (bool, error) {
+  ...
+}
+```
+
+再调用`func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string)`方法，方法作的事如下：
+
+1、读取"XXX_DATA/chain_data/keystore/UTC--2023-09-14T02-06-08.120067000Z--1fa0bb39d82a760ff8a53d1abbc544041bb8b546" 文件内容。并json.Unmarshal成结构体：`encryptedKeyJSONV3`
+
+```json
+{
+  "address":"1fa0bb39d82a760ff8a53d1abbc544041bb8b546",
+  "crypto":{
+    "cipher":"aes-128-ctr",
+    "ciphertext":"9597a1213af29238d3db7ff0155f220d8d1500be4cfa773a8d66ec1c5de113a6",
+    "cipherparams":{
+      "iv":"a7a244997899838d601a787587a1379a"
+    },
+    "kdf":"scrypt",
+    "kdfparams":{
+      "dklen":32,
+      "n":262144,
+      "p":1,
+      "r":8,
+      "salt":"42ddc8ce3f1780a14bd666b915c3bafd865f011d0301a59ba7a425d65d6a114a"
+    },
+    "mac":"958bde58d4ce87c1d3e0a762ac0c28434f01f50c54edc2a809d0042f63e93c4b"
+  },
+  "id":"e289cb75-7fd5-4dc0-adc7-c680db044084",
+  "version":3
+}
+
+```
+
+2、拿到KDF：`func getKDFKey(cryptoJSON CryptoJSON, auth string) ([]byte, error)`
+
+即返回scrypt.Key(salt、n、r、p、dklen、auth(密码123456) )，得到一个32个byte的切片derivedKey。
+
+3、取切片的后16个byte，与ciphertext作keccak256：crypto.Keccak256(derivedKey[16:32], cipherText)。
+
+4、判断是否跟mac相等。
+
+5、  再写aes：plainText, err := aesCTRXOR(derivedKey[:16], cipherText, iv)。
+
+验证无误，解锁。类图如下：
+
+![solidity_01_unlockAccount](img/solidity_01_unlockAccount.svg)
+
+## 部署合约
+
+```javascript
+> cInstance = c.new({data: bytecode, gas: 1000000, from: eth.coinbase}, function(e, contract){
+  if(!e){
+    if(!contract.address){
+      console.log("Contract transaction send: Transaction Hash: "+contract.transactionHash+" waiting to be mined...");
+    }else{
+      console.log("Contract mined! Address: "+contract.address);
+      console.log(contract);
+    }
+  }else{
+    console.log(e)
+  }
+})
+```
+
+此时，报错：Error: authentication needed: password or unlock。
+
+所以，部署前要先unlock。
+
+
+
+
+
 
 
 # 各个JumpTable
@@ -396,8 +487,6 @@ Tangerine Whistle（EIP 150） JumpTable
 Spurious Dragon（EIP 158）JumpTable
 
 在Tangerine Whistle的基础上，修改:
-
-
 
 | index | 语义 | 详细operation                                                |
 | ----- | ---- | ------------------------------------------------------------ |

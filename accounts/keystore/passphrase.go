@@ -355,7 +355,7 @@ func getKDFKey(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
 	}
 	dkLen := ensureInt(cryptoJSON.KDFParams["dklen"])
 
-	if cryptoJSON.KDF == keyHeaderKDF {
+	if cryptoJSON.KDF == keyHeaderKDF { // true
 		n := ensureInt(cryptoJSON.KDFParams["n"])
 		r := ensureInt(cryptoJSON.KDFParams["r"])
 		p := ensureInt(cryptoJSON.KDFParams["p"])
