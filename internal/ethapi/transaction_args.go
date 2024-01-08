@@ -119,7 +119,7 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 	}
 	// If chain id is provided, ensure it matches the local chain id. Otherwise, set the local
 	// chain id as the default.
-	want := b.ChainConfig().ChainID
+	want := b.ChainConfig().ChainID // 10
 	if args.ChainID != nil {
 		if have := (*big.Int)(args.ChainID); have.Cmp(want) != 0 {
 			return fmt.Errorf("chainId does not match node's (have=%v, want=%v)", have, want)
@@ -149,7 +149,7 @@ func (args *TransactionArgs) setFeeDefaults(ctx context.Context, b Backend) erro
 	}
 	// Now attempt to fill in default value depending on whether London is active or not.
 	head := b.CurrentHeader()
-	if b.ChainConfig().IsLondon(head.Number) {
+	if b.ChainConfig().IsLondon(head.Number) { // false
 		// London is active, set maxPriorityFeePerGas and maxFeePerGas.
 		if err := args.setLondonFeeDefaults(ctx, head, b); err != nil {
 			return err

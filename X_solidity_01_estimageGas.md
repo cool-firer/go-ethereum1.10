@@ -280,6 +280,8 @@ $$
 
 ```javascript
 > personal.unlockAccount(eth.coinbase)
+// 或者直接传密码, 存活3600s
+> personal.unlockAccount(eth.coinbase, "123456", 3600)
 ```
 
 web3.js代码就不看，直接看Go代码，通过查找[inprocHandler](./X_06_inprocHandler.md)，unlockAccount在 `internal/ethapi/api.go#PersonalAccountAPI{}`，打上断点。
@@ -329,7 +331,7 @@ func (s *PersonalAccountAPI) UnlockAccount(ctx context.Context, addr common.Addr
 
 5、  再写aes：plainText, err := aesCTRXOR(derivedKey[:16], cipherText, iv)。
 
-验证无误，解锁。类图如下：
+验证无误，解锁。默认5分钟有效。类图如下：
 
 ![solidity_01_unlockAccount](img/solidity_01_unlockAccount.svg)
 
@@ -354,7 +356,31 @@ func (s *PersonalAccountAPI) UnlockAccount(ctx context.Context, addr common.Addr
 
 所以，部署前要先unlock。
 
+web3.js代码在：`internal/jsre/deps/web3.js`
 
+```javascript
+var ContractFactory = function (eth, abi) {
+  this.eth = eth;
+  this.abi = abi;
+  this.new = function () {
+    ...
+    // 最终调用的是这个
+    this.eth.sendTransaction(...)
+  }
+};
+```
+
+Go代码在：internal/ethapi/api.go
+
+```go
+func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) {
+  ...
+}
+```
+
+大致过程如图：
+
+![solidity_01_newContract](img/solidity_01_newContract.svg)
 
 
 
@@ -365,94 +391,94 @@ func (s *PersonalAccountAPI) UnlockAccount(ctx context.Context, addr common.Addr
 
 Frontier JumpTable
 
-| index | 语义                   | 详细operation                                                | 解释                                                         |
-| ----- | ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| 0x00  | STOP                   | execute: opStop, constantGas: 0,<br />minStack: 0,  maxStack: 0, |                                                              |
-| 0x01  | ADD                    | execute: opAdd, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x02  | MUL                    | execute: opMul, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x03  | SUB                    | execute: opSub, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x04  | DIV                    | execute: opDiv, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x05  | SDIV                   | execute: opSdiv, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x06  | MOD                    | execute: opMod, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x07  | SMOD                   | execute: opSmod, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x08  | ADDMOD                 | execute: opAddmod, constantGas: 8,<br />minStack: 3,  maxStack: 1026, |                                                              |
-| 0x09  | MULMOD                 | execute: opMulmod, constantGas: 8,<br />minStack: 3,  maxStack: 1026, |                                                              |
-| 0xa   | EXP                    | execute: opExp, <br />dynamicGas: gasExpFrontier,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0xb   | SIGNEXTEND             | execute: opSignExtend, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x10  | LT                     | execute: opLt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x11  | GT                     | execute: opGt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x12  | SLT                    | execute: opSlt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x13  | SGT                    | execute: opSgt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x14  | EQ                     | execute: opEq, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x15  | ISZERO                 | execute: opIszero, constantGas: 3,<br />minStack: 1,  maxStack: 1024, | 如果Top是0x00, 则改Top = 1;<br />如果Top是非0, 则改Top = 0;  |
-| 0x16  | AND                    | execute: opAnd, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x17  | OR                     | execute: opOr, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x18  | XOR                    | execute: opXor, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-| 0x19  | NOT                    | execute: opNot, constantGas: 3,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x1a  | BYTE                   | execute: opByte, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x20  | KECCAK256              | execute: opKeccak256, <br />constantGas: 30,<br />dynamicGas: gasKeccak256,<br />minStack: 2,  maxStack: 1025,<br/>memorySize: memoryKeccak256(Func), |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x30  | ADDRESS                | execute: opAddress, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x31  | BALANCE                | execute: opBalance, constantGas: 20,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x32  | ORIGIN                 | execute: opOrigin, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x33  | CALLER                 | execute: opCaller, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x34  | CALLVALUE              | execute: opCallValue, constantGas: 2,<br />minStack: 0,  maxStack: 1023, | PUSH value                                                   |
-| 0x35  | CALLDATALOAD           | execute: opCallDataLoad, <br />constantGas: 3,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x36  | CALLDATASIZE           | execute: opCallDataSize,<br />constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x37  | CALLDATACOPY           | execute: opCallDataCopy, <br />constantGas: 3,<br />dynamicGas: gasCallDataCopy,<br />minStack: 3,  maxStack: 1027,<br/>memorySize: memoryCallDataCopy(Func), |                                                              |
-| 0x38  | CODESIZE               | execute: opCodeSize, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x39  | CODECOPY               | execute: opCodeCopy, <br />constantGas: 3,<br />dynamicGas: gasCodeCopy,<br />minStack: 3,  maxStack: 1027,<br/>memorySize: memoryCodeCopy(Func), | [... 2, 1, 0 ]<br />取0为Off, 2为Len,<br />扩展内存          |
-| 0x3a  | GASPRICE               | execute: opGasprice, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x3b  | EXTCODESIZE            | execute: opExtCodeSize, constantGas: 20,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x3c  | EXTCODECOPY            | execute: opExtCodeCopy, <br />constantGas: 20,<br />dynamicGas: gasExtCodeCopy,<br />minStack: 4,  maxStack: 1028,<br/>memorySize: memoryExtCodeCopy(Func), |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x40  | BLOCKHASH              | execute: opBlockhash, constantGas: 20,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x41  | COINBASE               | execute: opCoinbase, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x42  | TIMESTAMP              | execute: opTimestamp, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x43  | NUMBER                 | execute: opNumber, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x44  | DIFFICULTY<br />RANDOM | execute: opDifficulty, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x45  | GASLIMIT               | execute: opGasLimit, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x50  | POP                    | execute: opPop, constantGas: 2,<br />minStack: 1,  maxStack: 1025, | pop出Top                                                     |
-| 0x51  | MLOAD                  | execute: opMload, <br />constantGas: 3,<br />dynamicGas: gasMLoad,<br />minStack: 1,  maxStack: 1024,<br/>memorySize: memoryMLoad(Func), |                                                              |
-| 0x52  | MSTORE                 | execute: opMstore, <br />constantGas: 3,<br />dynamicGas: gasMStore,<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryMStore(Func), | pop两次,<br />拿到mStart, val,<br />w为字,<br />计算Fee=F(w)=$w^2$$\div$512 + w$\times$3 - F(w -1) |
-| 0x53  | MSTORE8                | execute: opMstore8, <br />constantGas: 3,<br />dynamicGas: gasMStore8,<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryMStore8(Func), |                                                              |
-| 0x54  | SLOAD                  | execute: opSload, constantGas: 50,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x55  | SSTORE                 | execute: opSstore,<br />dynamicGas: gasSStore,<br />minStack: 2,  maxStack: 1026, |                                                              |
-| 0x56  | JUMP                   | execute: opJump, constantGas: 50,<br />minStack: 1,  maxStack: 1024, |                                                              |
-| 0x57  | JUMPI                  | execute: opJumpi, constantGas: 10,<br />minStack: 2,  maxStack: 1026, | pos = pop();<br />cond = pop():<br />如果cond非0, 跳到pos取指 |
-| 0x58  | PC                     | execute: opPc, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x59  | MSIZE                  | execute: opMsize, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x5a  | GAS                    | execute: opGas, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x5b  | JUMPDEST               | execute: opJumpdest, constantGas: 1,<br />minStack: 0,  maxStack: 1024, | 什么也不做                                                   |
-|       |                        |                                                              |                                                              |
-| 0x60  | PUSH1                  | execute: opPush1, constantGas: 3,<br />minStack: 0,  maxStack: 1023, |                                                              |
-| 0x61  | PUSH2                  | execute: makePush(2, 2),<br />constantGas: 3,<br />minStack: 0,  maxStack: 1023, | 大端连接后面两个字节, push进入                               |
-| ...   | 一直到32               |                                                              |                                                              |
-| 0x7f  | PUSH32                 | execute: makePush(32, 32),<br />constantGas: 3,<br />minStack: 0,  maxStack: 1023, |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x80  | DUP1                   | execute: makeDup(1),<br />constantGas: 3,<br />minStack: 1,  maxStack: 1023, | 复制一份栈顶                                                 |
-| ...   | 一直到16               |                                                              |                                                              |
-| 0x8f  | DUP16                  | execute: makeDup(16),<br />constantGas: 3,<br />minStack: 16,  maxStack: 1023, |                                                              |
-|       |                        |                                                              |                                                              |
-| 0x90  | SWAP1                  | execute: makeSwap(1),<br />constantGas: 3,<br />minStack: 2,  maxStack: 1024, |                                                              |
-| ...   | 一直到16               |                                                              |                                                              |
-| 0x9f  | SWAP16                 | execute: makeSwap(16),<br />constantGas: 3,<br />minStack: 17,  maxStack: 1024, |                                                              |
-|       |                        |                                                              |                                                              |
-| 0xa0  | LOG0                   | execute: makeLog(0), <br />dynamicGas: makeGasLog(0),<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryLog(Func), |                                                              |
-| 0xa1  | LOG1                   | execute: makeLog(1), <br />dynamicGas: makeGasLog(1),<br />minStack: 3,  maxStack: 1027,<br/>memorySize: memoryLog(Func), |                                                              |
-| 0xa2  | LOG2                   | execute: makeLog(2), <br />dynamicGas: makeGasLog(2),<br />minStack: 4,  maxStack: 1028,<br/>memorySize: memoryLog(Func), |                                                              |
-| 0xa3  | LOG3                   | execute: makeLog(3), <br />dynamicGas: makeGasLog(3),<br />minStack: 5,  maxStack: 1029,<br/>memorySize: memoryLog(Func), |                                                              |
-| 0xa4  | LOG4                   | execute: makeLog(4), <br />dynamicGas: makeGasLog(4),<br />minStack: 6,  maxStack: 1030,<br/>memorySize: memoryLog(Func), |                                                              |
-|       |                        |                                                              |                                                              |
-| 0xf0  | CREATE                 | execute: opCreate,<br />constantGas: 32000,<br />dynamicGas: gasCreate,<br />minStack: 3,  maxStack: 1026,<br/>memorySize: memoryCreate(Func), |                                                              |
-| 0xf1  | CALL                   | execute: opCall,<br />constantGas: 40,<br />dynamicGas: gasCall,<br />minStack: 7,  maxStack: 1030,<br/>memorySize: memoryCall(Func), |                                                              |
-| 0xf2  | CALLCODE               | execute: opCallCode,<br />constantGas: 40,<br />dynamicGas: gasCallCode,<br />minStack: 7,  maxStack: 1030,<br/>memorySize: memoryCall(Func), |                                                              |
-| 0xf3  | RETURN                 | execute: opReturn,<br />dynamicGas: gasReturn,<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryReturn(Func), | [ off, len ]<br />看是否需要扩展内存;<br />pop两次:off, size;<br />返回mem[off, off+size] |
-| 0xff  | SELFDESTRUCT           | execute: opSelfdestruct,<br />dynamicGas: gasSelfdestruct,<br />minStack: 1,  maxStack: 1025, |                                                              |
-|       |                        |                                                              |                                                              |
+| 语义                   | index | 详细operation                                                | 解释                                                         |
+| ---------------------- | ----- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| STOP                   | 0x00  | execute: opStop, constantGas: 0,<br />minStack: 0,  maxStack: 0, |                                                              |
+| ADD                    | 0x01  | execute: opAdd, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| MUL                    | 0x02  | execute: opMul, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| SUB                    | 0x03  | execute: opSub, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| DIV                    | 0x04  | execute: opDiv, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| SDIV                   | 0x05  | execute: opSdiv, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| MOD                    | 0x06  | execute: opMod, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| SMOD                   | 0x07  | execute: opSmod, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| ADDMOD                 | 0x08  | execute: opAddmod, constantGas: 8,<br />minStack: 3,  maxStack: 1026, |                                                              |
+| MULMOD                 | 0x09  | execute: opMulmod, constantGas: 8,<br />minStack: 3,  maxStack: 1026, |                                                              |
+| EXP                    | 0xa   | execute: opExp, <br />dynamicGas: gasExpFrontier,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| SIGNEXTEND             | 0xb   | execute: opSignExtend, constantGas: 5,<br />minStack: 2,  maxStack: 1025, |                                                              |
+|                        |       |                                                              |                                                              |
+| LT                     | 0x10  | execute: opLt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| GT                     | 0x11  | execute: opGt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| SLT                    | 0x12  | execute: opSlt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| SGT                    | 0x13  | execute: opSgt, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| EQ                     | 0x14  | execute: opEq, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| ISZERO                 | 0x15  | execute: opIszero, constantGas: 3,<br />minStack: 1,  maxStack: 1024, | 如果Top是0x00, 则改Top = 1;<br />如果Top是非0, 则改Top = 0;  |
+| AND                    | 0x16  | execute: opAnd, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| OR                     | 0x17  | execute: opOr, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| XOR                    | 0x18  | execute: opXor, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+| NOT                    | 0x19  | execute: opNot, constantGas: 3,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| BYTE                   | 0x1a  | execute: opByte, constantGas: 3,<br />minStack: 2,  maxStack: 1025, |                                                              |
+|                        |       |                                                              |                                                              |
+| KECCAK256              | 0x20  | execute: opKeccak256, <br />constantGas: 30,<br />dynamicGas: gasKeccak256,<br />minStack: 2,  maxStack: 1025,<br/>memorySize: memoryKeccak256(Func), |                                                              |
+|                        |       |                                                              |                                                              |
+| ADDRESS                | 0x30  | execute: opAddress, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| BALANCE                | 0x31  | execute: opBalance, constantGas: 20,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| ORIGIN                 | 0x32  | execute: opOrigin, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| CALLER                 | 0x33  | execute: opCaller, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| CALLVALUE              | 0x34  | execute: opCallValue, constantGas: 2,<br />minStack: 0,  maxStack: 1023, | PUSH value                                                   |
+| CALLDATALOAD           | 0x35  | execute: opCallDataLoad, <br />constantGas: 3,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| CALLDATASIZE           | 0x36  | execute: opCallDataSize,<br />constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| CALLDATACOPY           | 0x37  | execute: opCallDataCopy, <br />constantGas: 3,<br />dynamicGas: gasCallDataCopy,<br />minStack: 3,  maxStack: 1027,<br/>memorySize: memoryCallDataCopy(Func), |                                                              |
+| CODESIZE               | 0x38  | execute: opCodeSize, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| CODECOPY               | 0x39  | execute: opCodeCopy, <br />constantGas: 3,<br />dynamicGas: gasCodeCopy,<br />minStack: 3,  maxStack: 1027,<br/>memorySize: memoryCodeCopy(Func), | [... 2, 1, 0 ]<br />取0为Off, 2为Len,<br />扩展内存          |
+| GASPRICE               | 0x3a  | execute: opGasprice, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| EXTCODESIZE            | 0x3b  | execute: opExtCodeSize, constantGas: 20,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| EXTCODECOPY            | 0x3c  | execute: opExtCodeCopy, <br />constantGas: 20,<br />dynamicGas: gasExtCodeCopy,<br />minStack: 4,  maxStack: 1028,<br/>memorySize: memoryExtCodeCopy(Func), |                                                              |
+|                        |       |                                                              |                                                              |
+| BLOCKHASH              | 0x40  | execute: opBlockhash, constantGas: 20,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| COINBASE               | 0x41  | execute: opCoinbase, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| TIMESTAMP              | 0x42  | execute: opTimestamp, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| NUMBER                 | 0x43  | execute: opNumber, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| DIFFICULTY<br />RANDOM | 0x44  | execute: opDifficulty, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| GASLIMIT               | 0x45  | execute: opGasLimit, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+|                        |       |                                                              |                                                              |
+| POP                    | 0x50  | execute: opPop, constantGas: 2,<br />minStack: 1,  maxStack: 1025, | pop出Top                                                     |
+| MLOAD                  | 0x51  | execute: opMload, <br />constantGas: 3,<br />dynamicGas: gasMLoad,<br />minStack: 1,  maxStack: 1024,<br/>memorySize: memoryMLoad(Func), |                                                              |
+| MSTORE                 | 0x52  | execute: opMstore, <br />constantGas: 3,<br />dynamicGas: gasMStore,<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryMStore(Func), | pop两次,<br />拿到mStart, val,<br />w为字,<br />计算Fee=F(w)=$w^2$$\div$512 + w$\times$3 - F(w -1) |
+| MSTORE8                | 0x53  | execute: opMstore8, <br />constantGas: 3,<br />dynamicGas: gasMStore8,<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryMStore8(Func), |                                                              |
+| SLOAD                  | 0x54  | execute: opSload, constantGas: 50,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| SSTORE                 | 0x55  | execute: opSstore,<br />dynamicGas: gasSStore,<br />minStack: 2,  maxStack: 1026, |                                                              |
+| JUMP                   | 0x56  | execute: opJump, constantGas: 50,<br />minStack: 1,  maxStack: 1024, |                                                              |
+| JUMPI                  | 0x57  | execute: opJumpi, constantGas: 10,<br />minStack: 2,  maxStack: 1026, | pos = pop();<br />cond = pop():<br />如果cond非0, 跳到pos取指 |
+| PC                     | 0x58  | execute: opPc, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| MSIZE                  | 0x59  | execute: opMsize, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| GAS                    | 0x5a  | execute: opGas, constantGas: 2,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| JUMPDEST               | 0x5b  | execute: opJumpdest, constantGas: 1,<br />minStack: 0,  maxStack: 1024, | 什么也不做                                                   |
+|                        |       |                                                              |                                                              |
+| PUSH1                  | 0x60  | execute: opPush1, constantGas: 3,<br />minStack: 0,  maxStack: 1023, |                                                              |
+| PUSH2                  | 0x61  | execute: makePush(2, 2),<br />constantGas: 3,<br />minStack: 0,  maxStack: 1023, | 大端连接后面两个字节, push进入                               |
+| 一直到32               | ...   |                                                              |                                                              |
+| PUSH32                 | 0x7f  | execute: makePush(32, 32),<br />constantGas: 3,<br />minStack: 0,  maxStack: 1023, |                                                              |
+|                        |       |                                                              |                                                              |
+| DUP1                   | 0x80  | execute: makeDup(1),<br />constantGas: 3,<br />minStack: 1,  maxStack: 1023, | 复制一份栈顶                                                 |
+| 一直到16               | ...   |                                                              |                                                              |
+| DUP16                  | 0x8f  | execute: makeDup(16),<br />constantGas: 3,<br />minStack: 16,  maxStack: 1023, |                                                              |
+|                        |       |                                                              |                                                              |
+| SWAP1                  | 0x90  | execute: makeSwap(1),<br />constantGas: 3,<br />minStack: 2,  maxStack: 1024, |                                                              |
+| 一直到16               | ...   |                                                              |                                                              |
+| SWAP16                 | 0x9f  | execute: makeSwap(16),<br />constantGas: 3,<br />minStack: 17,  maxStack: 1024, |                                                              |
+|                        |       |                                                              |                                                              |
+| LOG0                   | 0xa0  | execute: makeLog(0), <br />dynamicGas: makeGasLog(0),<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryLog(Func), |                                                              |
+| LOG1                   | 0xa1  | execute: makeLog(1), <br />dynamicGas: makeGasLog(1),<br />minStack: 3,  maxStack: 1027,<br/>memorySize: memoryLog(Func), |                                                              |
+| LOG2                   | 0xa2  | execute: makeLog(2), <br />dynamicGas: makeGasLog(2),<br />minStack: 4,  maxStack: 1028,<br/>memorySize: memoryLog(Func), |                                                              |
+| LOG3                   | 0xa3  | execute: makeLog(3), <br />dynamicGas: makeGasLog(3),<br />minStack: 5,  maxStack: 1029,<br/>memorySize: memoryLog(Func), |                                                              |
+| LOG4                   | 0xa4  | execute: makeLog(4), <br />dynamicGas: makeGasLog(4),<br />minStack: 6,  maxStack: 1030,<br/>memorySize: memoryLog(Func), |                                                              |
+|                        |       |                                                              |                                                              |
+| CREATE                 | 0xf0  | execute: opCreate,<br />constantGas: 32000,<br />dynamicGas: gasCreate,<br />minStack: 3,  maxStack: 1026,<br/>memorySize: memoryCreate(Func), |                                                              |
+| CALL                   | 0xf1  | execute: opCall,<br />constantGas: 40,<br />dynamicGas: gasCall,<br />minStack: 7,  maxStack: 1030,<br/>memorySize: memoryCall(Func), |                                                              |
+| CALLCODE               | 0xf2  | execute: opCallCode,<br />constantGas: 40,<br />dynamicGas: gasCallCode,<br />minStack: 7,  maxStack: 1030,<br/>memorySize: memoryCall(Func), |                                                              |
+| RETURN                 | 0xf3  | execute: opReturn,<br />dynamicGas: gasReturn,<br />minStack: 2,  maxStack: 1026,<br/>memorySize: memoryReturn(Func), | [ off, len ]<br />看是否需要扩展内存;<br />pop两次:off, size;<br />返回mem[off, off+size] |
+| SELFDESTRUCT           | 0xff  | execute: opSelfdestruct,<br />dynamicGas: gasSelfdestruct,<br />minStack: 1,  maxStack: 1025, |                                                              |
+|                        |       |                                                              |                                                              |
 
 <br />
 

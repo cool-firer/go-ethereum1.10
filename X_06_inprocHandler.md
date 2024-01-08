@@ -105,7 +105,7 @@
 |           |               | gettransactionbyhash                   | GetTransactionByHash(ctx context.Context, hash common.Hash) (*RPCTransaction, error) |                                                              |
 |           |               | getrawtransactionbyhash                | GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) |                                                              |
 |           |               | gettransactionreceipt                  | GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) |                                                              |
-|           |               | sendtransaction                        | SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) |                                                              |
+|           |               | sendTransaction                        | SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) |                                                              |
 |           |               | filltransaction                        | FillTransaction(ctx context.Context, args TransactionArgs) (*SignTransactionResult, error) |                                                              |
 |           |               | sendrawtransaction                     | SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) |                                                              |
 |           |               | sign                                   | Sign(addr common.Address, data hexutil.Bytes) (hexutil.Bytes, error) |                                                              |
