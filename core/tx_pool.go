@@ -607,7 +607,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrTxTypeNotSupported
 	}
 	// Reject transactions over defined size to prevent DOS attacks
-	if uint64(tx.Size()) > txMaxSize {
+	if uint64(tx.Size()) > txMaxSize { // 4 * 32 * 1024
 		return ErrOversizedData
 	}
 	// Transactions can't be negative. This may never happen using RLP decoded
@@ -616,7 +616,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrNegativeValue
 	}
 	// Ensure the transaction doesn't exceed the current block limit gas.
-	if pool.currentMaxGas < tx.Gas() {
+	if pool.currentMaxGas < tx.Gas() { // 3141592 = 0x2fefd8
 		return ErrGasLimit
 	}
 	// Sanity check for extremely large numbers
@@ -1312,7 +1312,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.currentMaxGas = newHead.GasLimit
 
 	// Inject any transactions discarded due to reorgs
-	log.Debug("Reinjecting stale transactions", "count", len(reinject))
+	log.Debug("Reinjecting stale transactions", "count", len(reinject)) // 不新鲜的；（空气）污浊的；（烟味）难闻的；陈腐的
 	senderCacher.recover(pool.signer, reinject)
 	pool.addTxsLocked(reinject, false)
 
@@ -1337,14 +1337,14 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) []*types.Trans
 			continue // Just in case someone calls with a non existing account
 		}
 		// Drop all transactions that are deemed too old (low nonce)
-		forwards := list.Forward(pool.currentState.GetNonce(addr))
+		forwards := list.Forward(pool.currentState.GetNonce(addr)) // 删除所有nonce < 当前stateDB的nonce
 		for _, tx := range forwards {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
 		}
 		log.Trace("Removed old queued transactions", "count", len(forwards))
 		// Drop all transactions that are too costly (low balance or out of gas)
-		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
+		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas) // 删除所有Gas > 余额的
 		for _, tx := range drops {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
@@ -1353,10 +1353,10 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) []*types.Trans
 		queuedNofundsMeter.Mark(int64(len(drops)))
 
 		// Gather all executable transactions and promote them
-		readies := list.Ready(pool.pendingNonces.get(addr))
+		readies := list.Ready(pool.pendingNonces.get(addr)) // 顺序删除小于pendingNonce的
 		for _, tx := range readies {
 			hash := tx.Hash()
-			if pool.promoteTx(addr, hash, tx) {
+			if pool.promoteTx(addr, hash, tx) { // 加到pending
 				promoted = append(promoted, tx)
 			}
 		}
@@ -1365,8 +1365,8 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) []*types.Trans
 
 		// Drop all transactions over the allowed limit
 		var caps types.Transactions
-		if !pool.locals.contains(addr) {
-			caps = list.Cap(int(pool.config.AccountQueue))
+		if !pool.locals.contains(addr) { // 针对remote交易
+			caps = list.Cap(int(pool.config.AccountQueue)) // 64  超过64了, 剪掉最高的nonce交易
 			for _, tx := range caps {
 				hash := tx.Hash()
 				pool.all.Remove(hash)
@@ -1386,7 +1386,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) []*types.Trans
 			delete(pool.beats, addr)
 		}
 	}
-	return promoted
+	return promoted // 从queue转移到pending的tx
 }
 
 // truncatePending removes transactions from the pending queue if the pool is above the
@@ -1397,24 +1397,24 @@ func (pool *TxPool) truncatePending() {
 	for _, list := range pool.pending {
 		pending += uint64(list.Len())
 	}
-	if pending <= pool.config.GlobalSlots {
+	if pending <= pool.config.GlobalSlots { // 4096 + 1024
 		return
 	}
 
 	pendingBeforeCap := pending
-	// Assemble a spam order to penalize large transactors first
+	// Assemble a spam order to penalize large transactors first 惩罚；处罚；处以刑罚；（体育运动中）判罚
 	spammers := prque.New(nil)
 	for addr, list := range pool.pending {
 		// Only evict transactions from high rollers
-		if !pool.locals.contains(addr) && uint64(list.Len()) > pool.config.AccountSlots {
-			spammers.Push(addr, int64(list.Len()))
+		if !pool.locals.contains(addr) && uint64(list.Len()) > pool.config.AccountSlots { // 16
+			spammers.Push(addr, int64(list.Len())) // 收集所有超限的账户地址, tx长度为优先级
 		}
 	}
 	// Gradually drop transactions from offenders
 	offenders := []common.Address{}
 	for pending > pool.config.GlobalSlots && !spammers.Empty() {
 		// Retrieve the next offender if not local address
-		offender, _ := spammers.Pop()
+		offender, _ := spammers.Pop() // 弹出有最多交易的账户地址
 		offenders = append(offenders, offender.(common.Address))
 
 		// Equalize balances until all the same or below threshold
@@ -1482,7 +1482,7 @@ func (pool *TxPool) truncateQueue() {
 	for _, list := range pool.queue {
 		queued += uint64(list.Len())
 	}
-	if queued <= pool.config.GlobalQueue {
+	if queued <= pool.config.GlobalQueue { // 1024
 		return
 	}
 
@@ -1493,7 +1493,7 @@ func (pool *TxPool) truncateQueue() {
 			addresses = append(addresses, addressByHeartbeat{addr, pool.beats[addr]})
 		}
 	}
-	sort.Sort(sort.Reverse(addresses))
+	sort.Sort(sort.Reverse(addresses)) // 从大到小, 新的在前
 
 	// Drop transactions until the total is below the limit or only locals remain
 	for drop := queued - pool.config.GlobalQueue; drop > 0 && len(addresses) > 0; {
@@ -1503,7 +1503,7 @@ func (pool *TxPool) truncateQueue() {
 		addresses = addresses[:len(addresses)-1]
 
 		// Drop all transactions if they are less than the overflow
-		if size := uint64(list.Len()); size <= drop {
+		if size := uint64(list.Len()); size <= drop { // 不够删, 直接清空
 			for _, tx := range list.Flatten() {
 				pool.removeTx(tx.Hash(), true)
 			}

@@ -276,6 +276,15 @@ $$
 
 
 
+## 查看账户钱
+
+```javascript
+> web3.eth.getBalance(eth.coinbase)
+1000000
+```
+
+
+
 ## unlock账户
 
 ```javascript
@@ -382,7 +391,7 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionAr
 
 ![solidity_01_newContract](img/solidity_01_newContract.svg)
 
-
+入交易池部分在[tx_pool文档](./X_12_txpool.md)里。
 
 
 

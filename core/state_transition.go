@@ -114,14 +114,14 @@ func (result *ExecutionResult) Revert() []byte {
 	return common.CopyBytes(result.ReturnData)
 }
 
-// IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
+// IntrinsicGas computes the 'intrinsic gas' for a message with the given data. 固有的；内在的；本身的
 func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool, isHomestead, isEIP2028 bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
 	if isContractCreation && isHomestead { // true
 		gas = params.TxGasContractCreation // 53000
 	} else {
-		gas = params.TxGas
+		gas = params.TxGas // 21000
 	}
 	// Bump the required gas by the amount of transactional data
 	if len(data) > 0 {

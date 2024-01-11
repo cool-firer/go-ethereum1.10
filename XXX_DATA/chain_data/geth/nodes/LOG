@@ -354,3 +354,14 @@
 16:16:53.828058 table@remove removed @83
 16:16:53.828974 table@remove removed @80
 16:16:53.829808 table@remove removed @79
+=============== Jan 10, 2024 (CST) ===============
+14:33:02.196266 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+14:33:02.199889 version@stat F·[0 1] S·181B[0B 181B] Sc·[0.00 0.00]
+14:33:02.199984 db@open opening
+14:33:02.200260 journal@recovery F·1
+14:33:02.203387 journal@recovery recovering @90
+14:33:02.221458 memdb@flush created L0@93 N·1 S·162B "loc..seq,v58":"loc..seq,v58"
+14:33:02.226709 version@stat F·[1 1] S·343B[162B 181B] Sc·[0.25 0.00]
+14:33:02.287647 db@janitor F·5 G·1
+14:33:02.287712 db@janitor removing table-89
+14:33:02.288075 db@open done T·88.052555ms
