@@ -526,7 +526,10 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 	// Initialize a price and received time based heap with the head transactions
 	heads := make(TxByPriceAndTime, 0, len(txs))
 	for from, accTxs := range txs {
+		// 第一个交易的发起者
 		acc, _ := Sender(signer, accTxs[0])
+
+
 		wrapped, err := NewTxWithMinerFee(accTxs[0], baseFee)
 		// Remove transaction if sender doesn't match from, or if wrapping fails.
 		if acc != from || err != nil {
@@ -534,7 +537,7 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 			continue
 		}
 		heads = append(heads, wrapped)
-		txs[from] = accTxs[1:]
+		txs[from] = accTxs[1:] // 一个address都只取一个
 	}
 	heap.Init(&heads)
 

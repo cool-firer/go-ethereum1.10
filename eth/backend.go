@@ -505,7 +505,7 @@ func (s *Ethereum) StartMining(threads int) error {
 		SetThreads(threads int)
 	}
 
-	if th, ok := s.engine.(threaded); ok {
+	if th, ok := s.engine.(threaded); ok { // true
 		log.Info("Updated mining threads", "threads", threads)
 		if threads == 0 {
 			threads = -1 // Disable the miner from within
@@ -516,7 +516,7 @@ func (s *Ethereum) StartMining(threads int) error {
 	if !s.IsMining() {
 		// Propagate the initial price point to the transaction pool
 		s.lock.RLock()
-		price := s.gasPrice
+		price := s.gasPrice // 1000000000 = 0x3b9aca00
 		s.lock.RUnlock()
 		s.txPool.SetGasPrice(price)
 

@@ -84,7 +84,7 @@ func memoryMap(path string, lock bool) (*os.File, mmap.MMap, []uint32, error) {
 		file.Close()
 		return nil, nil, nil, err
 	}
-	for i, magic := range dumpMagic {
+	for i, magic := range dumpMagic { // []uint32{0xbaddcafe, 0xfee1dead}
 		if buffer[i] != magic {
 			mem.Unmap()
 			file.Close()
@@ -318,9 +318,9 @@ func (d *dataset) generate(dir string, limit int, lock bool, test bool) {
 		// Mark the dataset generated after we're done. This is needed for remote
 		defer atomic.StoreUint32(&d.done, 1)
 
-		csize := cacheSize(d.epoch*epochLength + 1)
+		csize := cacheSize(d.epoch*epochLength + 1) // epochLength: 30000
 		dsize := datasetSize(d.epoch*epochLength + 1)
-		seed := seedHash(d.epoch*epochLength + 1)
+		seed := seedHash(d.epoch*epochLength + 1) // 32byte长度
 		if test {
 			csize = 1024
 			dsize = 32 * 1024
@@ -598,8 +598,8 @@ func (ethash *Ethash) cache(block uint64) *cache {
 // generates on a background thread.
 func (ethash *Ethash) dataset(block uint64, async bool) *dataset {
 	// Retrieve the requested ethash dataset
-	epoch := block / epochLength
-	currentI, futureI := ethash.datasets.get(epoch)
+	epoch := block / epochLength // 30000
+	currentI, futureI := ethash.datasets.get(epoch) // 获取eopch对应的dataset
 	current := currentI.(*dataset)
 
 	// If async is specified, generate everything in a background thread

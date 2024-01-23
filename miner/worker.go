@@ -436,13 +436,19 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	<-timer.C // discard the initial tick
 
 	// commit aborts in-flight transaction execution with given signal and resubmits a new one.
+	// startCh阶段: noempty:false, s:commitInterruptNewHead
 	commit := func(noempty bool, s int32) {
 		if interrupt != nil {
 			atomic.StoreInt32(interrupt, s)
 		}
 		interrupt = new(int32)
 		select {
-		case w.newWorkCh <- &newWorkReq{interrupt: interrupt, noempty: noempty, timestamp: timestamp}:
+			// 交互到mainLoop
+		case w.newWorkCh <- &newWorkReq{
+			interrupt: interrupt, 
+			noempty: noempty, 
+			timestamp: timestamp,
+			}:
 		case <-w.exitCh:
 			return
 		}
@@ -464,6 +470,9 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	for {
 		select {
 		case <-w.startCh:
+			// 自加
+			log.Info("worker gto startCh", "currentBlock.Numer", w.chain.CurrentBlock().NumberU64())
+			
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
@@ -838,7 +847,17 @@ func (w *worker) updateSnapshot(env *environment) {
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction) ([]*types.Log, error) {
 	snap := env.state.Snapshot()
 
-	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig())
+	receipt, err := core.ApplyTransaction(
+		w.chainConfig, 
+		w.chain, 
+		&env.coinbase, 
+		env.gasPool, 
+		env.state, 
+		env.header, 
+		tx, 
+		&env.header.GasUsed, 
+		*w.chain.GetVMConfig(),
+	)
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		return nil, err
@@ -879,7 +898,7 @@ func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByP
 			return errBlockInterruptedByNewHead
 		}
 		// If we don't have enough gas for any further transactions then we're done
-		if env.gasPool.Gas() < params.TxGas {
+		if env.gasPool.Gas() < params.TxGas { // 21000
 			log.Trace("Not enough gas for further transactions", "have", env.gasPool, "want", params.TxGas)
 			break
 		}
@@ -921,7 +940,7 @@ func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByP
 			log.Trace("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Pop()
 
-		case errors.Is(err, nil):
+		case errors.Is(err, nil): // 没有错误
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
 			env.tcount++
@@ -1085,6 +1104,7 @@ func (w *worker) fillTransactions(interrupt *int32, env *environment) error {
 	// Fill the block with all available pending transactions.
 	pending := w.eth.TxPool().Pending(true)
 
+	// 分开local和remote
 	localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
 	for _, account := range w.eth.TxPool().Locals() {
 		if txs := remoteTxs[account]; len(txs) > 0 {
@@ -1094,6 +1114,7 @@ func (w *worker) fillTransactions(interrupt *int32, env *environment) error {
 		}
 	}
 	if len(localTxs) > 0 {
+		// minerFee、nonce排序
 		txs := types.NewTransactionsByPriceAndNonce(env.signer, localTxs, env.header.BaseFee)
 		if err := w.commitTransactions(env, txs, interrupt); err != nil {
 			return err
@@ -1126,7 +1147,7 @@ func (w *worker) generateWork(params *generateParams) (*types.Block, error) {
 // and submit them to the sealer.
 
 // 基于父块, 生成封装任务, 再把任务提交到封装器
-// new阶段: noempty: false
+// new阶段: noempty:false, interruup: 指向newworkLoop线程里的指针
 func (w *worker) commitWork(interrupt *int32, noempty bool, timestamp int64) {
 	start := time.Now()
 
@@ -1142,6 +1163,7 @@ func (w *worker) commitWork(interrupt *int32, noempty bool, timestamp int64) {
 		coinbase = w.coinbase // Use the preset address as the fee recipient
 	}
 
+	// 返回一个env
 	work, err := w.prepareWork(&generateParams{
 		timestamp: uint64(timestamp),
 		coinbase:  coinbase,
@@ -1152,15 +1174,19 @@ func (w *worker) commitWork(interrupt *int32, noempty bool, timestamp int64) {
 	// Create an empty block based on temporary copied state for
 	// sealing in advance without waiting block execution finished.
 	if !noempty && atomic.LoadUint32(&w.noempty) == 0 {
+		// startCh阶段, 无
 		w.commit(work.copy(), nil, false, start)
 	}
 
 	// Fill pending transactions from the txpool
+	// 执行transaction, 收集receipts进work
 	err = w.fillTransactions(interrupt, work)
 	if errors.Is(err, errBlockInterruptedByNewHead) {
 		work.discard()
 		return
 	}
+
+	// 
 	w.commit(work.copy(), w.fullTaskHook, true, start)
 
 	// Swap out the old work with the new one, terminating any leftover
@@ -1186,14 +1212,26 @@ func (w *worker) commit(env *environment, interval func(), update bool, start ti
 		// Create a local environment copy, avoid the data race with snapshot state.
 		// https://github.com/ethereum/go-ethereum/issues/24299
 		env := env.copy()
-		block, err := w.engine.FinalizeAndAssemble(w.chain, env.header, env.state, env.txs, env.unclelist(), env.receipts)
+		block, err := w.engine.FinalizeAndAssemble(
+			w.chain, 
+			env.header, 
+			env.state, 
+			env.txs, 
+			env.unclelist(), 
+			env.receipts,
+		)
 		if err != nil {
 			return err
 		}
 		// If we're post merge, just ignore
-		if !w.isTTDReached(block.Header()) {
+		if !w.isTTDReached(block.Header()) { // true
 			select {
-			case w.taskCh <- &task{receipts: env.receipts, state: env.state, block: block, createdAt: time.Now()}:
+			case w.taskCh <- &task{
+				receipts: env.receipts, 
+				state: env.state, 
+				block: block, 
+				createdAt: time.Now(),
+				}:
 				w.unconfirmed.Shift(block.NumberU64() - 1)
 				log.Info("Commit new sealing work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
 					"uncles", len(env.uncles), "txs", env.tcount,
@@ -1244,7 +1282,7 @@ func (w *worker) getSealingBlock(parent common.Hash, timestamp uint64, coinbase 
 // isTTDReached returns the indicator if the given block has reached the total
 // terminal difficulty for The Merge transition.
 func (w *worker) isTTDReached(header *types.Header) bool {
-	td, ttd := w.chain.GetTd(header.ParentHash, header.Number.Uint64()-1), w.chain.Config().TerminalTotalDifficulty
+	td, ttd := w.chain.GetTd(header.ParentHash, header.Number.Uint64()-1), w.chain.Config().TerminalTotalDifficulty // td:2097152 = 0x200000, ttd:nil
 	return td != nil && ttd != nil && td.Cmp(ttd) >= 0
 }
 

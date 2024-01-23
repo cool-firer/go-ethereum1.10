@@ -61,7 +61,7 @@ ABI：
 
 # Console发布合约
 
-## 用abi创建合约
+## 用abi创建合约工厂
 
 ```javascript
 > abi = JSON.parse('[{"inputs":[],"name":"retrieve","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"num","type":"uint256"}],"name":"store","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
@@ -209,7 +209,7 @@ func (s *BlockChainAPI) EstimateGas(ctx context.Context, args TransactionArgs, b
 80
 15
 61 00 10 
-57
+57 // JUMPI 执行到这里, 跳到0x10处取
 60 00 80 fd
 5b // 从0x57跳过来
 50
@@ -347,7 +347,7 @@ func (s *PersonalAccountAPI) UnlockAccount(ctx context.Context, addr common.Addr
 ## 部署合约
 
 ```javascript
-> cInstance = c.new({data: bytecode, gas: 1000000, from: eth.coinbase}, function(e, contract){
+> cInstance = c.new({data: bytecode, gas: 200000, gasPrice: 1, from: eth.coinbase}, function(e, contract){
   if(!e){
     if(!contract.address){
       console.log("Contract transaction send: Transaction Hash: "+contract.transactionHash+" waiting to be mined...");
@@ -392,6 +392,18 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionAr
 ![solidity_01_newContract](img/solidity_01_newContract.svg)
 
 入交易池部分在[tx_pool文档](./X_12_txpool.md)里。
+
+<br />
+
+## 挖矿
+
+```javascript
+> miner.start(1)
+```
+
+能否能挖新新区，取决于交易池是否有交易和服务器性能。
+
+
 
 
 

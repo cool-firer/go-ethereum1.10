@@ -51,8 +51,8 @@ const (
 // cacheSize returns the size of the ethash verification cache that belongs to a certain
 // block number.
 func cacheSize(block uint64) uint64 {
-	epoch := int(block / epochLength)
-	if epoch < maxEpoch {
+	epoch := int(block / epochLength) // 30000
+	if epoch < maxEpoch { // 2048
 		return cacheSizes[epoch]
 	}
 	return calcCacheSize(epoch)
@@ -160,7 +160,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 
 	// Calculate the number of theoretical rows (we'll store in one buffer nonetheless)
 	size := uint64(len(cache))
-	rows := int(size) / hashBytes
+	rows := int(size) / hashBytes // 64
 
 	// Start a monitoring goroutine to report progress on low end devices
 	var progress uint32
@@ -182,7 +182,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 	keccak512 := makeHasher(sha3.NewLegacyKeccak512())
 
 	// Sequentially produce the initial dataset
-	keccak512(cache, seed)
+	keccak512(cache, seed) // dest, data
 	for offset := uint64(hashBytes); offset < size; offset += hashBytes {
 		keccak512(cache[offset:], cache[offset-hashBytes:offset])
 		atomic.AddUint32(&progress, 1)
@@ -190,7 +190,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 	// Use a low-round version of randmemohash
 	temp := make([]byte, hashBytes)
 
-	for i := 0; i < cacheRounds; i++ {
+	for i := 0; i < cacheRounds; i++ { // 3
 		for j := 0; j < rows; j++ {
 			var (
 				srcOff = ((j - 1 + rows) % rows) * hashBytes

@@ -190,7 +190,7 @@ func (st *StateTransition) to() common.Address {
 }
 
 func (st *StateTransition) buyGas() error {
-	mgval := new(big.Int).SetUint64(st.msg.Gas())
+	mgval := new(big.Int).SetUint64(st.msg.Gas()) // gasmLimit
 	mgval = mgval.Mul(mgval, st.gasPrice) // st.gasPrice: 空值 最后mgval: 1582828 = 0x1826ec
 	balanceCheck := mgval
 	if st.gasFeeCap != nil { // true gasFeeCap不是nil, 只是abs值是nil 可以理解为空盒子模型
@@ -227,6 +227,7 @@ func (st *StateTransition) preCheck() error {
 				st.msg.From().Hex(), stNonce)
 		}
 		// Make sure the sender is an EOA
+		// 当前账户上的codeHah不能有值
 		if codeHash := st.state.GetCodeHash(st.msg.From()); codeHash != emptyCodeHash && codeHash != (common.Hash{}) {
 			return fmt.Errorf("%w: address %v, codehash: %s", ErrSenderNoEOA,
 				st.msg.From().Hex(), codeHash)
@@ -349,7 +350,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// Skip fee payment when NoBaseFee is set and the fee fields
 		// are 0. This avoids a negative effectiveTip being applied to
 		// the coinbase when simulating calls.
-	} else {
+	} else { // true
 		fee := new(big.Int).SetUint64(st.gasUsed())
 		fee.Mul(fee, effectiveTip)
 		st.state.AddBalance(st.evm.Context.Coinbase, fee)

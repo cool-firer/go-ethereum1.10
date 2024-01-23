@@ -459,7 +459,7 @@ func (pool *TxPool) SetGasPrice(price *big.Int) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	old := pool.gasPrice
+	old := pool.gasPrice // 1
 	pool.gasPrice = price
 	// if the min miner fee increased, remove transactions below the new threshold
 	if price.Cmp(old) > 0 {
@@ -547,6 +547,7 @@ func (pool *TxPool) ContentFrom(addr common.Address) (types.Transactions, types.
 // The enforceTips parameter can be used to do an extra filtering on the pending
 // transactions and only return those whose **effective** tip is large enough in
 // the next pending execution environment.
+// 从miner start阶段来的, enforceTips:true
 func (pool *TxPool) Pending(enforceTips bool) map[common.Address]types.Transactions {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()

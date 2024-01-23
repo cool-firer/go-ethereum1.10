@@ -356,7 +356,7 @@ func (beacon *Beacon) FinalizeAndAssemble(chain consensus.ChainHeaderReader, hea
 // Note, the method returns immediately and will send the result async. More
 // than one result may also be returned depending on the consensus algorithm.
 func (beacon *Beacon) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
-	if !beacon.IsPoSHeader(block.Header()) {
+	if !beacon.IsPoSHeader(block.Header()) { // true
 		return beacon.ethone.Seal(chain, block, results, stop)
 	}
 	// The seal verification is done by the external consensus engine,
@@ -413,7 +413,7 @@ func (beacon *Beacon) SetThreads(threads int) {
 	type threaded interface {
 		SetThreads(threads int)
 	}
-	if th, ok := beacon.ethone.(threaded); ok {
+	if th, ok := beacon.ethone.(threaded); ok { // true
 		th.SetThreads(threads)
 	}
 }
