@@ -1,3 +1,7 @@
+[toc]
+
+
+
 # 启动时用到txpool的地方
 
 ## stack, cfg := makeConfigNode(ctx)
@@ -45,7 +49,7 @@ if err := checkTxFee(tx.GasPrice(), tx.Gas(), b.RPCTxFeeCap());
 
 花费不能超过发起者余额。
 
-所以在[X_solidity_01_estimageGas](./X_solidity_01_estimageGas.md)文档里，需要传多个gasPrice，不超过发起者余额就行。
+所以在[X_solidity_01_estimageGas](./X_solidity_01_estimageGas.md)文档里，需要加多传一个gasPrice，不超过发起者余额就行。
 
 ```javascript
 > cInstance = c.new({data: bytecode, gas: 100000, gasPrice: 1, from: eth.coinbase}, function(e, contract){

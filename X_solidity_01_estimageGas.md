@@ -1,3 +1,7 @@
+[toc]
+
+
+
 # remix上最简单的合约
 
 ```javascript
@@ -403,7 +407,7 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionAr
 
 能否能挖新新区，取决于交易池是否有交易和服务器性能。
 
-
+挖矿部分在[miner文档](./X_13_miner.md)里。
 
 
 

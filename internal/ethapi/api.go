@@ -1030,7 +1030,7 @@ func (s *BlockChainAPI) Call(ctx context.Context, args TransactionArgs, blockNrO
 
 func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap uint64) (hexutil.Uint64, error) { // gasCap: 50000000 = 0x2faf080
 	// Binary search the gas requirement, as it may be higher than the amount used
-	var (
+	var ( // gasCap: 50000000 = 0x2faf080
 		lo  uint64 = params.TxGas - 1 // lo: 20999 = 0x5207
 		hi  uint64
 		cap uint64
@@ -1078,7 +1078,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 			}
 			available.Sub(available, args.Value.ToInt())
 		}
-		allowance := new(big.Int).Div(available, feeCap)
+		allowance := new(big.Int).Div(available, feeCap) // 津贴 = balance / 1Gwei, 此时为0
 
 		// If the allowance is larger than maximum uint64, skip checking
 		if allowance.IsUint64() && hi > allowance.Uint64() {
@@ -1088,7 +1088,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 			}
 			log.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
 				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
-			hi = allowance.Uint64()
+			hi = allowance.Uint64() // 把from的所有balance作为hi
 		}
 	}
 	// Recap the highest gas allowance with specified gascap.

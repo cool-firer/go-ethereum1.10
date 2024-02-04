@@ -23,7 +23,7 @@
       "program": "${workspaceFolder}/cmd/geth",
       "cwd": "${workspaceFolder}/XXX_DATA",
       // ../build/bin/geth --datadir "./chain_data" --nodiscover console 2>>eth_output.log
-      "args": ["--datadir", "./chain_data", "--nodiscover", "console", "2>>eth_output.log"],
+      "args": ["--datadir", "./chain_data", "--nodiscover", "--rpc.evmtimeout", "0", "console", "2>>eth_output.log"],
     },
     
   ]

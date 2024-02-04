@@ -212,7 +212,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 	if gas == 0 {
 		gas = uint64(math.MaxUint64 / 2)
 	}
-	if args.Gas != nil {
+	if args.Gas != nil { // Gas空盒子, 不为nil
 		gas = uint64(*args.Gas) // 1582828 = 0x1826ec
 	}
 	if globalGasCap != 0 && globalGasCap < gas {
